@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2015 Jason Maxfield
+  ~
+  ~ This program is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+
+<project name="public_id_port" default="all">
+  
+  
+  <property file="public_id_port.properties"/>
+  <!-- Uncomment the following property if no tests compilation is needed -->
+  <!-- 
+  <property name="skip.tests" value="true"/>
+   -->
+  
+  <!-- Compiler options -->
+  
+  <property name="compiler.debug" value="on"/>
+  <property name="compiler.generate.no.warnings" value="off"/>
+  <property name="compiler.args" value=""/>
+  <property name="compiler.max.memory" value="700m"/>
+  <patternset id="ignored.files">
+    <exclude name="**/CVS/**"/>
+    <exclude name="**/SCCS/**"/>
+    <exclude name="**/RCS/**"/>
+    <exclude name="**/rcs/**"/>
+    <exclude name="**/.DS_Store/**"/>
+    <exclude name="**/.svn/**"/>
+    <exclude name="**/.pyc/**"/>
+    <exclude name="**/.pyo/**"/>
+    <exclude name="**/*.pyc/**"/>
+    <exclude name="**/*.pyo/**"/>
+    <exclude name="**/.git/**"/>
+    <exclude name="**/*.hprof/**"/>
+    <exclude name="**/_svn/**"/>
+    <exclude name="**/.hg/**"/>
+    <exclude name="**/*.lib/**"/>
+    <exclude name="**/*~/**"/>
+    <exclude name="**/__pycache__/**"/>
+    <exclude name="**/.bundle/**"/>
+    <exclude name="**/*.rbc/**"/>
+  </patternset>
+  <patternset id="library.patterns">
+    <include name="*.zip"/>
+    <include name="*.apk"/>
+    <include name="*.war"/>
+    <include name="*.egg"/>
+    <include name="*.ear"/>
+    <include name="*.ane"/>
+    <include name="*.swc"/>
+    <include name="*.jar"/>
+  </patternset>
+  <patternset id="compiler.resources">
+    <exclude name="**/?*.java"/>
+    <exclude name="**/?*.form"/>
+    <exclude name="**/?*.class"/>
+    <exclude name="**/?*.groovy"/>
+    <exclude name="**/?*.scala"/>
+    <exclude name="**/?*.flex"/>
+    <exclude name="**/?*.kt"/>
+    <exclude name="**/?*.clj"/>
+  </patternset>
+  
+  <!-- JDK definitions -->
+  
+  <property name="jdk.bin.jdk" value="${jdk.home.jdk}/bin"/>
+  <path id="jdk.classpath.jdk">
+    <fileset dir="${jdk.home.jdk}">
+      <include name="jre/lib/charsets.jar"/>
+      <include name="jre/lib/deploy.jar"/>
+      <include name="jre/lib/javaws.jar"/>
+      <include name="jre/lib/jce.jar"/>
+      <include name="jre/lib/jfr.jar"/>
+      <include name="jre/lib/jfxrt.jar"/>
+      <include name="jre/lib/jsse.jar"/>
+      <include name="jre/lib/management-agent.jar"/>
+      <include name="jre/lib/plugin.jar"/>
+      <include name="jre/lib/resources.jar"/>
+      <include name="jre/lib/rt.jar"/>
+      <include name="jre/lib/ext/access-bridge-64.jar"/>
+      <include name="jre/lib/ext/dnsns.jar"/>
+      <include name="jre/lib/ext/jaccess.jar"/>
+      <include name="jre/lib/ext/localedata.jar"/>
+      <include name="jre/lib/ext/sunec.jar"/>
+      <include name="jre/lib/ext/sunjce_provider.jar"/>
+      <include name="jre/lib/ext/sunmscapi.jar"/>
+      <include name="jre/lib/ext/zipfs.jar"/>
+    </fileset>
+  </path>
+  
+  <property name="project.jdk.home" value="${jdk.home.jdk}"/>
+  <property name="project.jdk.bin" value="${jdk.bin.jdk}"/>
+  <property name="project.jdk.classpath" value="jdk.classpath.jdk"/>
+  
+  
+  <!-- Global Libraries -->
+  <!-- Register Custom Compiler Taskdefs -->
+  <property name="javac2.home" value="${idea.home}/lib"/>
+  <path id="javac2.classpath">
+    <pathelement location="${javac2.home}/javac2.jar"/>
+    <pathelement location="${javac2.home}/jdom.jar"/>
+    <pathelement location="${javac2.home}/asm-all.jar"/>
+    <pathelement location="${javac2.home}/jgoodies-forms.jar"/>
+  </path>
+  <target name="register.custom.compilers">
+    <taskdef name="javac2" classname="com.intellij.ant.Javac2" classpathref="javac2.classpath"/>
+    <taskdef name="instrumentIdeaExtensions" classname="com.intellij.ant.InstrumentIdeaExtensions" classpathref="javac2.classpath"/>
+  </target>
+  
+  <!-- Modules -->
+  
+  
+  <!-- Module Public ID port -->
+  
+  <dirname property="module.public_id_port.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.public_id_port" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.public_id_port" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.public_id_port" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.public_id_port" value="-encoding UTF-8 -source 1.6 ${compiler.args}"/>
+  
+  <property name="public_id_port.output.dir" value="${module.public_id_port.basedir}/out/production/Public ID port"/>
+  <property name="public_id_port.testoutput.dir" value="${module.public_id_port.basedir}/out/test/Public ID port"/>
+  
+  <path id="public_id_port.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="public_id_port.module.production.classpath">
+    <path refid="${module.jdk.classpath.public_id_port}"/>
+  </path>
+  
+  <path id="public_id_port.runtime.production.module.classpath">
+    <pathelement location="${public_id_port.output.dir}"/>
+  </path>
+  
+  <path id="public_id_port.module.classpath">
+    <path refid="${module.jdk.classpath.public_id_port}"/>
+    <pathelement location="${public_id_port.output.dir}"/>
+  </path>
+  
+  <path id="public_id_port.runtime.module.classpath">
+    <pathelement location="${public_id_port.testoutput.dir}"/>
+    <pathelement location="${public_id_port.output.dir}"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.public_id_port">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.public_id_port">
+    <patternset refid="excluded.from.module.public_id_port"/>
+  </patternset>
+  
+  <path id="public_id_port.module.sourcepath">
+    <dirset dir="${module.public_id_port.basedir}">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.public_id_port" depends="compile.module.public_id_port.production,compile.module.public_id_port.tests" description="Compile module Public ID port"/>
+  
+  <target name="compile.module.public_id_port.production" depends="register.custom.compilers" description="Compile module Public ID port; production classes">
+    <mkdir dir="${public_id_port.output.dir}"/>
+    <javac2 destdir="${public_id_port.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.public_id_port}/javac">
+      <compilerarg line="${compiler.args.public_id_port}"/>
+      <bootclasspath refid="public_id_port.module.bootclasspath"/>
+      <classpath refid="public_id_port.module.production.classpath"/>
+      <src refid="public_id_port.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.public_id_port"/>
+    </javac2>
+    
+    <copy todir="${public_id_port.output.dir}">
+      <fileset dir="${module.public_id_port.basedir}/src">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.public_id_port.tests" depends="register.custom.compilers,compile.module.public_id_port.production" description="compile module Public ID port; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.public_id_port" description="cleanup module">
+    <delete dir="${public_id_port.output.dir}"/>
+    <delete dir="${public_id_port.testoutput.dir}"/>
+  </target>
+  
+  <target name="init" description="Build initialization">
+    <!-- Perform any build initialization in this target -->
+  </target>
+  
+  <target name="clean" depends="clean.module.public_id_port, clean.artifact.javafxapp" description="cleanup all"/>
+  
+  <target name="build.modules" depends="init, clean, compile.module.public_id_port" description="build all modules"/>
+  
+  <target name="init.artifacts">
+    <property name="artifacts.temp.dir" value="${basedir}/__artifacts_temp"/>
+    <property name="artifact.output.javafxapp" value="${basedir}/out/artifacts/JavaFXApp"/>
+    <property name="artifact.output.public_id_port:jar" value="${basedir}/out/artifacts/Public_ID_port_jar"/>
+    <mkdir dir="${artifacts.temp.dir}"/>
+    <property name="artifact.temp.output.JavaFXApp" value="${artifacts.temp.dir}/JavaFXApp.jar"/>
+    <property name="temp.jar.path.Public ID port.jar" value="${artifacts.temp.dir}/Public ID port.jar"/>
+    <taskdef resource="com/sun/javafx/tools/ant/antlib.xml" uri="javafx:com.sun.javafx.tools.ant" classpath="${jdk.home.jdk}/lib/ant-javafx.jar"/>
+  </target>
+  
+  <target name="clean.artifact.javafxapp" description="clean JavaFXApp artifact output">
+    <delete dir="${artifact.output.javafxapp}"/>
+  </target>
+  
+  <target name="artifact.javafxapp" depends="init.artifacts, compile.module.public_id_port" description="Build &#39;JavaFXApp&#39; artifact" xmlns:fx="javafx:com.sun.javafx.tools.ant">
+    <mkdir dir="${artifact.output.javafxapp}"/>
+    <copy todir="${artifact.temp.output.JavaFXApp}">
+      <fileset dir="${public_id_port.output.dir}"/>
+    </copy>
+    <fx:fileset id="all_but_JavaFXApp" dir="${artifact.temp.output.JavaFXApp}" includes="**/*.jar">
+      <exclude name="JavaFXApp.jar"/>
+    </fx:fileset>
+    <fx:fileset id="all_JavaFXApp" dir="${artifact.temp.output.JavaFXApp}" includes="**/*.jar"/>
+    <fx:application id="JavaFXApp_id" name="JavaFXApp" mainClass="com.loserskater.Main"/>
+    <fx:jar destfile="${artifact.temp.output.JavaFXApp}\JavaFXApp.jar">
+      <fx:application refid="JavaFXApp_id"/>
+      <fileset dir="${artifact.temp.output.JavaFXApp}" excludes="**/*.jar"/>
+      <fx:resources>
+        <fx:fileset refid="all_but_JavaFXApp"/>
+      </fx:resources>
+      <manifest/>
+    </fx:jar>
+    <fx:deploy width="600" height="400" updatemode="background" outdir="${artifact.temp.output.JavaFXApp}\deploy" outfile="JavaFXApp">
+      <fx:application refid="JavaFXApp_id"/>
+      <fx:resources>
+        <fx:fileset refid="all_JavaFXApp"/>
+      </fx:resources>
+    </fx:deploy>
+    <copy todir="${artifact.output.javafxapp}">
+      <fileset dir="${artifact.temp.output.JavaFXApp}/deploy"/>
+    </copy>
+    <delete includeemptydirs="true">
+      <fileset dir="${artifact.temp.output.JavaFXApp}"/>
+    </delete>
+  </target>
+  
+  <target name="artifact.public_id_port:jar" depends="init.artifacts, compile.module.public_id_port" description="Build &#39;Public ID port:jar&#39; artifact">
+    <property name="artifact.temp.output.public_id_port:jar" value="${artifacts.temp.dir}/Public_ID_port_jar"/>
+    <mkdir dir="${artifact.temp.output.public_id_port:jar}"/>
+    <jar destfile="${temp.jar.path.Public ID port.jar}" duplicate="preserve" filesetmanifest="mergewithoutmain">
+      <zipfileset dir="${public_id_port.output.dir}"/>
+    </jar>
+    <copy file="${temp.jar.path.Public ID port.jar}" tofile="${artifact.temp.output.public_id_port:jar}/Public ID port.jar"/>
+  </target>
+  
+  <target name="build.all.artifacts" depends="artifact.javafxapp, artifact.public_id_port:jar" description="Build all artifacts">
+    <mkdir dir="${artifact.output.public_id_port:jar}"/>
+    <copy todir="${artifact.output.public_id_port:jar}">
+      <fileset dir="${artifact.temp.output.public_id_port:jar}"/>
+    </copy>
+    
+    <!-- Delete temporary files -->
+    <delete dir="${artifacts.temp.dir}"/>
+  </target>
+  
+  <target name="all" depends="build.modules, build.all.artifacts" description="build all"/>
+</project>
