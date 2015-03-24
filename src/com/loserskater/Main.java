@@ -31,6 +31,7 @@ import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.awt.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,20 +43,26 @@ public class Main extends Application {
     private static final int SOURCE_XML = 0;
     private static final int PORT_XML = 1;
     private static final int SOURCE_SMALI = 2;
-    private static final String SEARCH_STRING = "0x7f";
+    private static final String DEFAULT_SEARCH_STRING = "0x7f";
     private static final String SOURCE_PUBLIC_XML_FILENAME = "sourcepublic";
     private static final String PORT_PUBLIC_XML_FILENAME = "portpublic";
     private static final String SOURCE_SMALI_FILENAME = "sourcesmali";
 
+    private String customSearchString = null;
     private String portXmlLabel = "Port public.xml:";
     private String sourceXmlLabel = "Source public.xml:";
     private String sourceFileLabel = "Source smali file:";
     private FileChooser.ExtensionFilter xmlExtension = new FileChooser.ExtensionFilter("XML", "*.xml");
     private FileChooser.ExtensionFilter smaliExtension = new FileChooser.ExtensionFilter("smali", "*.smali");
 
+    private ArrayList<String> originalIds = new ArrayList<String>();
+    private ArrayList<String> nameType = new ArrayList<String>();
+
     private File sourcePublicXml;
     private File portPublicXml;
     private File sourceSmaliFile;
+
+    private boolean isConverting = false;
 
     final Text statusText = new Text();
 
@@ -70,22 +77,25 @@ public class Main extends Application {
         final List<String> parameters = params.getRaw();
         Console console = System.console();
         if (console != null) {
+            //Running from command line so get parameters
             if (parameters != null) {
-                if (!parameters.isEmpty() && parameters.size() == 3) {
-                    sourcePublicXml = new File(parameters.get(0));
-                    portPublicXml = new File(parameters.get(1));
-                    sourceSmaliFile = new File(parameters.get(2));
-                    convertFile();
+                if (!parameters.isEmpty()) {
+                    loadParams(parameters);
+                    for (String opt : parameters){
+                        if (opt.equalsIgnoreCase("f") || opt.equalsIgnoreCase("find")){
+                            cmdFind();
+                        } else if (opt.equalsIgnoreCase("c") || opt.equalsIgnoreCase("convert")){
+                            isConverting = true;
+                            cmdConvert();
+                        }
+                    }
                 } else {
-                    String jarName = new File(Main.class.getProtectionDomain()
-                            .getCodeSource()
-                            .getLocation()
-                            .getPath())
-                            .getName();
                     System.out.println(
-                            "usage: " + FilenameUtils.removeExtension(jarName) + " <source public.xml> <port public.xml> <source smali>"
+                            "usage: public_id_convert f[ind] <source public.xml> <source smali>" + "\n" +
+                            "       public_id_convert c[onvert] <source public.xml> <source smali> <port public.xml>"
                     );
                 }
+                //Since we're running from command line we can exit here
                 System.exit(0);
             }
         }
@@ -123,7 +133,8 @@ public class Main extends Application {
         Button sourceButton = new Button(open);
         Button portButton = new Button(open);
         Button fileButton = new Button(open);
-        Button convert = new Button("Convert");
+        Button convertButton = new Button("Convert");
+        Button findButton = new Button("Find IDs");
 
         sourceButton.setOnAction(
                 new EventHandler<ActionEvent>() {
@@ -143,10 +154,17 @@ public class Main extends Application {
                 }
         );
 
-        convert.setOnAction(new EventHandler<ActionEvent>() {
+        convertButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
-                convertFile();
+                    cmdConvert();
+            }
+        });
+
+        findButton.setOnAction(new EventHandler<ActionEvent>() {
+            @Override
+            public void handle(ActionEvent actionEvent) {
+                cmdFind();
             }
         });
 
@@ -162,24 +180,26 @@ public class Main extends Application {
         gridXML.add(sourceTextField, 1, 0);
         gridXML.add(sourceButton, 2, 0);
 
-        gridXML.add(portLabel, 0, 1);
-        gridXML.add(portTextField, 1, 1);
-        gridXML.add(portButton, 2, 1);
+        gridXML.add(fileLabel, 0, 1);
+        gridXML.add(fileTextField, 1, 1);
+        gridXML.add(fileButton, 2, 1);
+
+        HBox findBtn = new HBox(10);
+        findBtn.setAlignment(Pos.CENTER);
+        findBtn.getChildren().add(findButton);
+        gridXML.add(findBtn, 1, 2);
 
         //Create an empty row
-        gridXML.add(new Label(""), 0, 2);
+        gridXML.add(new Label(""), 0, 3);
 
-        gridXML.add(fileLabel, 0, 3);
-        gridXML.add(fileTextField, 1, 3);
-        gridXML.add(fileButton, 2, 3);
+        gridXML.add(portLabel, 0, 4);
+        gridXML.add(portTextField, 1, 4);
+        gridXML.add(portButton, 2, 4);
 
-        //Create an empty row
-        gridXML.add(new Label(""), 0, 2);
-
-        HBox hbBtn = new HBox(10);
-        hbBtn.setAlignment(Pos.CENTER);
-        hbBtn.getChildren().add(convert);
-        gridXML.add(hbBtn, 1, 4);
+        HBox convertBtn = new HBox(10);
+        convertBtn.setAlignment(Pos.CENTER);
+        convertBtn.getChildren().add(convertButton);
+        gridXML.add(convertBtn, 1, 5);
 
         final Pane rootGroup = new VBox(12);
         rootGroup.getChildren().addAll(gridXML);
@@ -198,9 +218,63 @@ public class Main extends Application {
         stage.show();
     }
 
+    private void loadParams(List<String> params){
+        if (params.size() == 3) {
+            sourcePublicXml = new File(params.get(1));
+            sourceSmaliFile = new File(params.get(2));
+        } else if (params.size() > 3) {
+            portPublicXml = new File(params.get(3));
+        }
+    }
+
+    private void cmdConvert() {
+        if (findIds()){
+            convertFile();
+        }
+    }
+
     private void updateStatusBar(String string) {
         statusText.setText(string);
         System.out.print(string + "\n");
+    }
+
+    private void cmdFind(){
+        if (findIds() && nameType != null && !nameType.isEmpty()){
+            File tmp = new File("found_public_ids.txt");
+            BufferedWriter writer = null;
+
+            try {
+                writer = new BufferedWriter(new OutputStreamWriter(
+                        new FileOutputStream(tmp), "utf-8"));
+                writer.write("This file is located at: ");
+                writer.newLine();
+                writer.write(tmp.getAbsolutePath());
+                writer.newLine();
+                writer.newLine();
+                writer.write("Found the following " + nameType.size() + " IDs:");
+                writer.newLine();
+                for (int i = 0; i < nameType.size(); i++){
+                    writer.write(nameType.get(i) + " id=\"" + originalIds.get(i) + "\"");
+                    writer.newLine();
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            } finally {
+                if (writer != null) {
+                    try {
+                        writer.close();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+            try {
+                Desktop.getDesktop().edit(tmp);
+            } catch (IOException ex){
+                ex.printStackTrace();
+            }
+        }
+
     }
 
     private void getFilesFromPreference() {
@@ -209,15 +283,12 @@ public class Main extends Application {
         sourceSmaliFile = getFilePreference(SOURCE_SMALI_FILENAME);
     }
 
-    private void convertFile() {
+    private boolean findIds(){
         if (!checkFiles()) {
-            return;
+            return false;
         }
-
-        ArrayList<String> ids = new ArrayList<String>();
-        ArrayList<String> nameType = new ArrayList<String>();
-        ArrayList<String> newIds = new ArrayList<String>();
-
+        originalIds.clear();
+        nameType.clear();
         Scanner scanner = null;
         //Read source smali
         try {
@@ -225,10 +296,10 @@ public class Main extends Application {
             scanner = new Scanner(sourceSmaliFile);
             while (scanner.hasNextLine()) {
                 final String lineFromFile = scanner.nextLine();
-                if (lineFromFile.contains(SEARCH_STRING)) {
-                    int index = lineFromFile.indexOf(SEARCH_STRING);
+                if (lineFromFile.contains(getSearchString())) {
+                    int index = lineFromFile.indexOf(getSearchString());
                     String publicId = lineFromFile.substring(index, index + 10);
-                    ids.add(publicId);
+                    originalIds.add(publicId);
                 }
             }
         } catch (FileNotFoundException e) {
@@ -243,15 +314,15 @@ public class Main extends Application {
             }
         }
 
-        if (ids.isEmpty()) {
-            updateStatusBar("No public ids found in smali file");
-            return;
+        if (originalIds.isEmpty()) {
+            updateStatusBar("No ids found in smali file");
+            return false;
         }
 
         //Search source public.xml
         try {
             updateStatusBar("Searching source public.xml for ids...");
-            for (String id : ids) {
+            for (String id : originalIds) {
                 boolean contains = false;
                 scanner = new Scanner(sourcePublicXml);
                 while (scanner.hasNextLine()) {
@@ -279,10 +350,19 @@ public class Main extends Application {
         }
 
         if (nameType.isEmpty()) {
-            updateStatusBar("Could not find ids in the source public.xml");
-            return;
+            updateStatusBar("Could not find any ids in the source public.xml");
+            return false;
+        } else {
+            updateStatusBar("Found " + nameType.size() + " IDs");
         }
 
+        return true;
+    }
+
+    private void convertFile() {
+        ArrayList<String> newIds = new ArrayList<String>();
+
+        Scanner scanner = null;
         //Search port public.xml
         boolean empty = true;
         boolean missing = false;
@@ -323,7 +403,7 @@ public class Main extends Application {
         }
 
         //Search source file and change ids
-        Writer writer = null;
+        BufferedWriter writer = null;
         try {
             updateStatusBar("Replacing ids in smali file...");
             String filename = FilenameUtils.removeExtension(sourceSmaliFile.getName()) + "-MODIFIED" + FilenameUtils.getExtension(sourceSmaliFile.getName());
@@ -333,18 +413,18 @@ public class Main extends Application {
             scanner = new Scanner(sourceSmaliFile);
             while (scanner.hasNextLine()) {
                 String lineFromFile = scanner.nextLine();
-                for (int i = 0; i < ids.size(); i++) {
-                    if (lineFromFile.contains(ids.get(i))) {
+                for (int i = 0; i < originalIds.size(); i++) {
+                    if (lineFromFile.contains(originalIds.get(i))) {
                         if (newIds.get(i).contains("MISSING")) {
                             lineFromFile += newIds.get(i);
                         } else {
-                            lineFromFile = lineFromFile.replace(ids.get(i), newIds.get(i));
+                            lineFromFile = lineFromFile.replace(originalIds.get(i), newIds.get(i));
                         }
                         break;
                     }
                 }
                 writer.write(lineFromFile);
-                writer.write("\n");
+                writer.newLine();
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -366,25 +446,31 @@ public class Main extends Application {
         }
     }
 
+    private String getSearchString() {
+        return customSearchString == null ? DEFAULT_SEARCH_STRING : customSearchString;
+    }
+
     private boolean checkFiles() {
-        if (sourcePublicXml == null || portPublicXml == null || sourceSmaliFile == null) {
-            updateStatusBar("Please load all files!");
-            return false;
+        if (sourcePublicXml == null || sourceSmaliFile == null) {
+            if (isConverting && portPublicXml == null) {
+                updateStatusBar("Please load all files!");
+                return false;
+            }
         }
-        if (!sourcePublicXml.exists()) {
+        if (sourcePublicXml == null || !sourcePublicXml.exists()) {
             updateStatusBar("Could not open source public.xml");
             return false;
         }
-        if (!portPublicXml.exists()) {
+        if (isConverting && (portPublicXml == null || !portPublicXml.exists())) {
             updateStatusBar("Could not open port public.xml");
             return false;
         }
-        if (!sourceSmaliFile.exists()) {
+        if (sourceSmaliFile == null || !sourceSmaliFile.exists()) {
             updateStatusBar("Could not open source smali");
             return false;
         }
 
-        if (sourcePublicXml.isDirectory() || portPublicXml.isDirectory() || sourceSmaliFile.isDirectory()) {
+        if (sourcePublicXml.isDirectory() || (isConverting && portPublicXml.isDirectory()) || sourceSmaliFile.isDirectory()) {
             updateStatusBar("Make sure you selected a file and not a directory");
             return false;
         }
