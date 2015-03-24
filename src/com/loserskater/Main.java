@@ -344,7 +344,7 @@ public class Main extends Application {
         if (!isCommandLine) {
             String searchString = customSearchField.getText().trim();
             customSearchString = searchString.matches(DEFAULT_SEARCH_STRING) ? null : searchString;
-        } 
+        }
 
         Scanner scanner = null;
         //Read source smali
