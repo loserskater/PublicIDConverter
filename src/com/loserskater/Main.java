@@ -27,6 +27,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -48,6 +50,13 @@ public class Main extends Application {
     private static final String PORT_PUBLIC_XML_FILENAME = "portpublic";
     private static final String SOURCE_SMALI_FILENAME = "sourcesmali";
 
+    private static final int CL_COMMAND_TYPE = 0;
+    private static final int CL_OPTION = 1;
+    private static final int CL_OPTION_VALUE = 2;
+    private static final int CL_SOURCE_XML = 3;
+    private static final int CL_SOURCE_SMALI = 4;
+    private static final int CL_PORT_XML = 5;
+
     private String customSearchString = null;
     private String portXmlLabel = "Port public.xml:";
     private String sourceXmlLabel = "Source public.xml:";
@@ -58,11 +67,15 @@ public class Main extends Application {
     private ArrayList<String> originalIds = new ArrayList<String>();
     private ArrayList<String> nameType = new ArrayList<String>();
 
+    TextField customSearchField = new TextField();
+
     private File sourcePublicXml;
     private File portPublicXml;
     private File sourceSmaliFile;
 
     private boolean isConverting = false;
+    private boolean isCustomSearch = false;
+    private boolean isCommandLine = false;
 
     final Text statusText = new Text();
 
@@ -77,22 +90,27 @@ public class Main extends Application {
         final List<String> parameters = params.getRaw();
         Console console = System.console();
         if (console != null) {
+            isCommandLine = true;
             //Running from command line so get parameters
             if (parameters != null) {
                 if (!parameters.isEmpty()) {
+                    if (parameters.get(CL_OPTION).equalsIgnoreCase("-s")) {
+                        isCustomSearch = true;
+                        customSearchString = parameters.get(CL_OPTION_VALUE);
+                    }
                     loadParams(parameters);
-                    for (String opt : parameters){
-                        if (opt.equalsIgnoreCase("f") || opt.equalsIgnoreCase("find")){
-                            cmdFind();
-                        } else if (opt.equalsIgnoreCase("c") || opt.equalsIgnoreCase("convert")){
-                            isConverting = true;
-                            cmdConvert();
-                        }
+                    if (parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("f") || parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("find")) {
+                        cmdFind();
+                    } else if (parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("c") || parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("convert")) {
+                        isConverting = true;
+                        cmdConvert();
                     }
                 } else {
                     System.out.println(
-                            "usage: public_id_convert f[ind] <source public.xml> <source smali>" + "\n" +
-                            "       public_id_convert c[onvert] <source public.xml> <source smali> <port public.xml>"
+                            "usage: public_id_convert f[ind] [options] <source public.xml> <source smali>" + "\n" +
+                                    "-s\t\t" + "The string that is searched for (default is 0x7f)" +
+                                    "public_id_convert c[onvert] [options] <source public.xml> <source smali> <port public.xml>" +
+                                    "-s\t\t" + "The string that is searched for (default is 0x7f)"
                     );
                 }
                 //Since we're running from command line we can exit here
@@ -104,12 +122,17 @@ public class Main extends Application {
         final BorderPane borderPane = new BorderPane();
         GridPane gridXML = new GridPane();
         setupGrid(gridXML);
+        ColumnConstraints column2 = new ColumnConstraints();
+        column2.setHgrow(Priority.ALWAYS);
+        column2.setMinWidth(400);
+        gridXML.getColumnConstraints().addAll(new ColumnConstraints(), column2);
 
         getFilesFromPreference();
 
         Label sourceLabel = new Label(sourceXmlLabel);
         Label portLabel = new Label(portXmlLabel);
         Label fileLabel = new Label(sourceFileLabel);
+        Label customValueLabel = new Label("Search string:");
 
         final TextField sourceTextField = new TextField();
         sourceTextField.setDisable(true);
@@ -127,6 +150,12 @@ public class Main extends Application {
         fileTextField.setDisable(true);
         if (sourceSmaliFile != null) {
             fileTextField.setText(sourceSmaliFile.getAbsolutePath());
+        }
+
+        if (customSearchString == null) {
+            customSearchField.setText(DEFAULT_SEARCH_STRING);
+        } else {
+            customSearchField.setText(customSearchString);
         }
 
         String open = "Open..";
@@ -157,7 +186,7 @@ public class Main extends Application {
         convertButton.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
-                    cmdConvert();
+                cmdConvert();
             }
         });
 
@@ -201,8 +230,18 @@ public class Main extends Application {
         convertBtn.getChildren().add(convertButton);
         gridXML.add(convertBtn, 1, 5);
 
+        GridPane optionsGrid = new GridPane();
+        setupGrid(optionsGrid);
+
+        Label optionsTitle = new Label("OPTIONS");
+        optionsTitle.setFont(Font.font(null, FontWeight.BOLD, 16));
+        optionsGrid.add(optionsTitle, 1, 0);
+
+        optionsGrid.add(customValueLabel, 0, 1);
+        optionsGrid.add(customSearchField, 1, 1);
+
         final Pane rootGroup = new VBox(12);
-        rootGroup.getChildren().addAll(gridXML);
+        rootGroup.getChildren().addAll(gridXML, optionsGrid);
         rootGroup.setPadding(new Insets(20));
 
 
@@ -218,17 +257,29 @@ public class Main extends Application {
         stage.show();
     }
 
-    private void loadParams(List<String> params){
-        if (params.size() == 3) {
-            sourcePublicXml = new File(params.get(1));
-            sourceSmaliFile = new File(params.get(2));
-        } else if (params.size() > 3) {
-            portPublicXml = new File(params.get(3));
+    private int getSourceXmlIndex() {
+        return isCustomSearch ? CL_SOURCE_XML : CL_SOURCE_XML - 2;
+    }
+
+    private int getSourceSmaliIndex() {
+        return isCustomSearch ? CL_SOURCE_SMALI : CL_SOURCE_SMALI - 2;
+    }
+
+    private int getPortXmlIndex() {
+        return isCustomSearch ? CL_PORT_XML : CL_PORT_XML - 2;
+    }
+
+    private void loadParams(List<String> params) {
+        sourcePublicXml = new File(params.get(getSourceXmlIndex()));
+        sourceSmaliFile = new File(params.get(getSourceSmaliIndex()));
+        if (isConverting) {
+            portPublicXml = new File(params.get(getPortXmlIndex()));
         }
+
     }
 
     private void cmdConvert() {
-        if (findIds()){
+        if (findIds()) {
             convertFile();
         }
     }
@@ -238,8 +289,8 @@ public class Main extends Application {
         System.out.print(string + "\n");
     }
 
-    private void cmdFind(){
-        if (findIds() && nameType != null && !nameType.isEmpty()){
+    private void cmdFind() {
+        if (findIds() && nameType != null && !nameType.isEmpty()) {
             File tmp = new File("found_public_ids.txt");
             BufferedWriter writer = null;
 
@@ -253,7 +304,7 @@ public class Main extends Application {
                 writer.newLine();
                 writer.write("Found the following " + nameType.size() + " IDs:");
                 writer.newLine();
-                for (int i = 0; i < nameType.size(); i++){
+                for (int i = 0; i < nameType.size(); i++) {
                     writer.write(nameType.get(i) + " id=\"" + originalIds.get(i) + "\"");
                     writer.newLine();
                 }
@@ -270,7 +321,7 @@ public class Main extends Application {
             }
             try {
                 Desktop.getDesktop().edit(tmp);
-            } catch (IOException ex){
+            } catch (IOException ex) {
                 ex.printStackTrace();
             }
         }
@@ -283,12 +334,18 @@ public class Main extends Application {
         sourceSmaliFile = getFilePreference(SOURCE_SMALI_FILENAME);
     }
 
-    private boolean findIds(){
+    private boolean findIds() {
         if (!checkFiles()) {
             return false;
         }
         originalIds.clear();
         nameType.clear();
+
+        if (!isCommandLine) {
+            String searchString = customSearchField.getText().trim();
+            customSearchString = searchString.matches(DEFAULT_SEARCH_STRING) ? null : searchString;
+        } 
+
         Scanner scanner = null;
         //Read source smali
         try {
@@ -298,8 +355,10 @@ public class Main extends Application {
                 final String lineFromFile = scanner.nextLine();
                 if (lineFromFile.contains(getSearchString())) {
                     int index = lineFromFile.indexOf(getSearchString());
-                    String publicId = lineFromFile.substring(index, index + 10);
-                    originalIds.add(publicId);
+                    String publicId = lineFromFile.substring(index, lineFromFile.length());
+                    if (publicId.length() >= 6) {
+                        originalIds.add(publicId);
+                    }
                 }
             }
         } catch (FileNotFoundException e) {
@@ -481,12 +540,7 @@ public class Main extends Application {
         grid.setAlignment(Pos.CENTER);
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new Insets(20));
-
-        ColumnConstraints column2 = new ColumnConstraints();
-        column2.setHgrow(Priority.ALWAYS);
-        column2.setMinWidth(400);
-        grid.getColumnConstraints().addAll(new ColumnConstraints(), column2);
+        grid.setPadding(new Insets(10));
     }
 
     private void openFile(String title, Stage stage, TextField textField, FileChooser.ExtensionFilter extension, int id) {
@@ -519,7 +573,7 @@ public class Main extends Application {
     }
 
     private File getFile(int id) {
-        switch (id){
+        switch (id) {
             case SOURCE_XML:
                 return sourcePublicXml;
             case PORT_XML:
