@@ -42,6 +42,8 @@ import java.util.prefs.Preferences;
 
 public class Main extends Application {
 
+    private static final String VERSION = "0.1";
+
     private static final int SOURCE_XML = 0;
     private static final int PORT_XML = 1;
     private static final int SOURCE_SMALI = 2;
@@ -107,6 +109,8 @@ public class Main extends Application {
                             cmdFind();
                         } else if (parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("c") || parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("convert")) {
                             cmdConvert();
+                        } else {
+                            showUsage();
                         }
                     } else {
                         showUsage();
