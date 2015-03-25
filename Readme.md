@@ -15,7 +15,7 @@ Easily convert public IDs when porting smali files.
 
         public_id_convert f[ind] [options] <source public.xml> <source smali>
         public_id_convert c[onvert] [options] <source public.xml> <source smali> <port public.xml>
-        -s       The string that is searched for (default is 0x7f)
+        -f       Search for framework IDs
 
     Example:
         public_id_convert c original/public.xml original/App.smali mine/public.xml
