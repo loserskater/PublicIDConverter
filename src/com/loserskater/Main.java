@@ -94,24 +94,25 @@ public class Main extends Application {
             //Running from command line so get parameters
             if (parameters != null) {
                 if (!parameters.isEmpty()) {
+                    if (parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("c") || parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("convert")) {
+                        isConverting = true;
+                    }
                     if (parameters.get(CL_OPTION).equalsIgnoreCase("-s")) {
                         isCustomSearch = true;
                         customSearchString = parameters.get(CL_OPTION_VALUE);
                     }
-                    loadParams(parameters);
-                    if (parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("f") || parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("find")) {
-                        cmdFind();
-                    } else if (parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("c") || parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("convert")) {
-                        isConverting = true;
-                        cmdConvert();
+                    if (getParamSize(parameters)) {
+                        loadParams(parameters);
+                        if (parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("f") || parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("find")) {
+                            cmdFind();
+                        } else if (parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("c") || parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("convert")) {
+                            cmdConvert();
+                        }
+                    } else {
+                        showUsage();
                     }
                 } else {
-                    System.out.println(
-                            "usage: public_id_convert f[ind] [options] <source public.xml> <source smali>" + "\n" +
-                                    "-s\t\t" + "The string that is searched for (default is 0x7f)" +
-                                    "public_id_convert c[onvert] [options] <source public.xml> <source smali> <port public.xml>" +
-                                    "-s\t\t" + "The string that is searched for (default is 0x7f)"
-                    );
+                    showUsage();
                 }
                 //Since we're running from command line we can exit here
                 System.exit(0);
@@ -255,6 +256,22 @@ public class Main extends Application {
         Scene scene = new Scene(borderPane);
         stage.setScene(scene);
         stage.show();
+    }
+
+    private boolean getParamSize(List<String> parameters) {
+        int maxSize = 6;
+        maxSize -= isCustomSearch ? 0 : 2;
+        maxSize -= isConverting ? 0 : 1;
+        return parameters.size() == maxSize;
+    }
+
+    private void showUsage() {
+        System.out.println(
+                "usage: public_id_convert f[ind] [options] <source public.xml> <source smali>" + "\n" +
+                        "-s\t\t" + "The string that is searched for (default is 0x7f)" +
+                        "public_id_convert c[onvert] [options] <source public.xml> <source smali> <port public.xml>" +
+                        "-s\t\t" + "The string that is searched for (default is 0x7f)"
+        );
     }
 
     private int getSourceXmlIndex() {
