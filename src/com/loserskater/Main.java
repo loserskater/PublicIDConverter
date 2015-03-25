@@ -24,6 +24,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.*;
@@ -39,28 +40,29 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.prefs.Preferences;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Main extends Application {
 
-    private static final String VERSION = "0.1";
+    private static final String VERSION = "0.2";
     private static final String APP_NAME = "Public ID Converter";
 
     private static final int SOURCE_XML = 0;
     private static final int PORT_XML = 1;
     private static final int SOURCE_SMALI = 2;
-    private static final String DEFAULT_SEARCH_STRING = "0x7f";
+    private static final String DEFAULT_SEARCH_STRING = "0x7[0-9a-f]{7}";
+    private static final String FRAMEWORK_SEARCH_STRING = "(0x01|0x1)[0-9a-f]{6,7}";
     private static final String SOURCE_PUBLIC_XML_FILENAME = "sourcepublic";
     private static final String PORT_PUBLIC_XML_FILENAME = "portpublic";
     private static final String SOURCE_SMALI_FILENAME = "sourcesmali";
 
     private static final int CL_COMMAND_TYPE = 0;
     private static final int CL_OPTION = 1;
-    private static final int CL_OPTION_VALUE = 2;
-    private static final int CL_SOURCE_XML = 3;
-    private static final int CL_SOURCE_SMALI = 4;
-    private static final int CL_PORT_XML = 5;
+    private static final int CL_SOURCE_XML = 2;
+    private static final int CL_SOURCE_SMALI = 3;
+    private static final int CL_PORT_XML = 4;
 
-    private String customSearchString = null;
     private String portXmlLabel = "Port public.xml:";
     private String sourceXmlLabel = "Source public.xml:";
     private String sourceFileLabel = "Source smali file:";
@@ -70,17 +72,16 @@ public class Main extends Application {
     private ArrayList<String> originalIds = new ArrayList<String>();
     private ArrayList<String> nameType = new ArrayList<String>();
 
-    TextField customSearchField = new TextField();
-
     private File sourcePublicXml;
     private File portPublicXml;
     private File sourceSmaliFile;
 
     private boolean isConverting = false;
-    private boolean isCustomSearch = false;
+    private boolean isFramework = false;
     private boolean isCommandLine = false;
 
     final Text statusText = new Text();
+    CheckBox frameworkCB = new CheckBox("Framework-res");
 
     public static void main(String[] args) {
         launch(args);
@@ -100,9 +101,8 @@ public class Main extends Application {
                     if (parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("c") || parameters.get(CL_COMMAND_TYPE).equalsIgnoreCase("convert")) {
                         isConverting = true;
                     }
-                    if (parameters.get(CL_OPTION).equalsIgnoreCase("-s")) {
-                        isCustomSearch = true;
-                        customSearchString = parameters.get(CL_OPTION_VALUE);
+                    if (parameters.get(CL_OPTION).equalsIgnoreCase("-f")) {
+                        isFramework = true;
                     }
                     if (getParamSize(parameters)) {
                         loadParams(parameters);
@@ -125,7 +125,6 @@ public class Main extends Application {
         }
 
         stage.setTitle(APP_NAME);
-        final BorderPane borderPane = new BorderPane();
         GridPane gridXML = new GridPane();
         setupGrid(gridXML);
         ColumnConstraints column2 = new ColumnConstraints();
@@ -138,31 +137,25 @@ public class Main extends Application {
         Label sourceLabel = new Label(sourceXmlLabel);
         Label portLabel = new Label(portXmlLabel);
         Label fileLabel = new Label(sourceFileLabel);
-        Label customValueLabel = new Label("Search string:");
 
         final TextField sourceTextField = new TextField();
-        sourceTextField.setDisable(true);
+        sourceTextField.setEditable(false);
         if (sourcePublicXml != null) {
             sourceTextField.setText(sourcePublicXml.getAbsolutePath());
         }
 
         final TextField portTextField = new TextField();
-        portTextField.setDisable(true);
+        portTextField.setEditable(false);
         if (portPublicXml != null) {
             portTextField.setText(portPublicXml.getAbsolutePath());
         }
 
         final TextField fileTextField = new TextField();
-        fileTextField.setDisable(true);
+        fileTextField.setEditable(false);
         if (sourceSmaliFile != null) {
             fileTextField.setText(sourceSmaliFile.getAbsolutePath());
         }
 
-        if (customSearchString == null) {
-            customSearchField.setText(DEFAULT_SEARCH_STRING);
-        } else {
-            customSearchField.setText(customSearchString);
-        }
 
         String open = "Open..";
         Button sourceXmlBtn = new Button(open);
@@ -241,20 +234,24 @@ public class Main extends Application {
 
         Label optionsTitle = new Label("OPTIONS");
         optionsTitle.setFont(Font.font(null, FontWeight.BOLD, 16));
-        optionsGrid.add(optionsTitle, 1, 0);
+        optionsGrid.add(optionsTitle, 0, 0);
+        optionsGrid.add(frameworkCB, 0, 1);
 
-        optionsGrid.add(customValueLabel, 0, 1);
-        optionsGrid.add(customSearchField, 1, 1);
+        Label version = new Label(VERSION);
+        version.setFont(Font.font(null, FontWeight.LIGHT, 8));
+        HBox versionBox = new HBox();
+        versionBox.setAlignment(Pos.BOTTOM_RIGHT);
+        versionBox.getChildren().add(version);
+        versionBox.setPadding(new Insets(5));
 
-        final Pane rootGroup = new VBox(12);
-        rootGroup.getChildren().addAll(gridXML, optionsGrid);
-        rootGroup.setPadding(new Insets(20));
-
+        final Pane rootGroup = new VBox();
+        rootGroup.getChildren().addAll(gridXML, optionsGrid, versionBox);
 
         VBox statusBar = new VBox();
         statusBar.setStyle("-fx-background-color: #e9e9e9");
         statusBar.getChildren().add(statusText);
 
+        final BorderPane borderPane = new BorderPane();
         borderPane.setCenter(rootGroup);
         borderPane.setBottom(statusBar);
 
@@ -264,8 +261,8 @@ public class Main extends Application {
     }
 
     private boolean getParamSize(List<String> parameters) {
-        int maxSize = 6;
-        maxSize -= isCustomSearch ? 0 : 2;
+        int maxSize = 5;
+        maxSize -= isFramework ? 0 : 1;
         maxSize -= isConverting ? 0 : 1;
         return parameters.size() == maxSize;
     }
@@ -273,22 +270,22 @@ public class Main extends Application {
     private void showUsage() {
         System.out.println(
                 "usage: public_id_convert f[ind] [options] <source public.xml> <source smali>" + "\n" +
-                        "-s\t\t" + "The string that is searched for (default is 0x7f)" +
-                        "public_id_convert c[onvert] [options] <source public.xml> <source smali> <port public.xml>" +
-                        "-s\t\t" + "The string that is searched for (default is 0x7f)"
+                        "-f\t\t" + "Search for framework IDs" + "\n" +
+                        "public_id_convert c[onvert] [options] <source public.xml> <source smali> <port public.xml>" + "\n" +
+                        "-f\t\t" + "Search for framework IDs"
         );
     }
 
     private int getSourceXmlIndex() {
-        return isCustomSearch ? CL_SOURCE_XML : CL_SOURCE_XML - 2;
+        return isFramework ? CL_SOURCE_XML : CL_SOURCE_XML - 1;
     }
 
     private int getSourceSmaliIndex() {
-        return isCustomSearch ? CL_SOURCE_SMALI : CL_SOURCE_SMALI - 2;
+        return isFramework ? CL_SOURCE_SMALI : CL_SOURCE_SMALI - 1;
     }
 
     private int getPortXmlIndex() {
-        return isCustomSearch ? CL_PORT_XML : CL_PORT_XML - 2;
+        return isFramework ? CL_PORT_XML : CL_PORT_XML - 1;
     }
 
     private void loadParams(List<String> params) {
@@ -364,20 +361,23 @@ public class Main extends Application {
         nameType.clear();
 
         if (!isCommandLine) {
-            String searchString = customSearchField.getText().trim();
-            customSearchString = searchString.matches(DEFAULT_SEARCH_STRING) ? null : searchString;
+            isFramework = frameworkCB.isSelected();
         }
 
         Scanner scanner = null;
+        Pattern pattern =
+                Pattern.compile(getSearchString());
+
+
         //Read source smali
         try {
             updateStatusBar("Reading smali...");
             scanner = new Scanner(sourceSmaliFile);
             while (scanner.hasNextLine()) {
                 final String lineFromFile = scanner.nextLine();
-                if (lineFromFile.contains(getSearchString())) {
-                    int index = lineFromFile.indexOf(getSearchString());
-                    String publicId = lineFromFile.substring(index, lineFromFile.length());
+                Matcher matcher = pattern.matcher(lineFromFile);
+                if (matcher.find()) {
+                    String publicId = matcher.group();
                     if (publicId.length() >= 6) {
                         originalIds.add(publicId);
                     }
@@ -442,6 +442,7 @@ public class Main extends Application {
 
     private void convertFile() {
         ArrayList<String> newIds = new ArrayList<String>();
+        String filename = FilenameUtils.removeExtension(sourceSmaliFile.getName()) + "-MODIFIED" + FilenameUtils.getExtension(sourceSmaliFile.getName());
 
         Scanner scanner = null;
         //Search port public.xml
@@ -487,7 +488,6 @@ public class Main extends Application {
         BufferedWriter writer = null;
         try {
             updateStatusBar("Replacing ids in smali file...");
-            String filename = FilenameUtils.removeExtension(sourceSmaliFile.getName()) + "-MODIFIED" + FilenameUtils.getExtension(sourceSmaliFile.getName());
             File newFile = new File(FilenameUtils.getFullPath(sourceSmaliFile.getAbsolutePath()) + filename);
             writer = new BufferedWriter(new OutputStreamWriter(
                     new FileOutputStream(newFile)));
@@ -520,15 +520,11 @@ public class Main extends Application {
                 }
             }
         }
-        if (missing) {
-            updateStatusBar("All done! But there were some missing ids. Search MODIFIED file for \"MISSING\"");
-        } else {
-            updateStatusBar("All done! New MODIFIED file will be in source smali directory.");
-        }
+            updateStatusBar((missing ? "There were some \"MISSING\" IDs. " : "") + filename + " created in source smali directory.");
     }
 
     private String getSearchString() {
-        return customSearchString == null ? DEFAULT_SEARCH_STRING : customSearchString;
+        return isFramework ? FRAMEWORK_SEARCH_STRING : DEFAULT_SEARCH_STRING;
     }
 
     private boolean checkFiles() {
@@ -562,7 +558,7 @@ public class Main extends Application {
         grid.setAlignment(Pos.CENTER);
         grid.setHgap(10);
         grid.setVgap(10);
-        grid.setPadding(new Insets(10));
+        grid.setPadding(new Insets(20, 20, 0, 20));
     }
 
     private void openFile(String title, Stage stage, TextField textField, FileChooser.ExtensionFilter extension, int id) {
@@ -570,8 +566,9 @@ public class Main extends Application {
                 new FileChooser();
         fileChooser.setTitle(title);
         fileChooser.getExtensionFilters().add(extension);
-        if (getFile(id) != null) {
-            fileChooser.setInitialDirectory(new File(FilenameUtils.getFullPath(getFile(id).getAbsolutePath())));
+        File file = getFile(id);
+        if (file != null && file.exists()) {
+            fileChooser.setInitialDirectory(new File(FilenameUtils.getFullPath(file.getAbsolutePath())));
         }
         final File selectedFile = fileChooser.showOpenDialog(stage);
 
