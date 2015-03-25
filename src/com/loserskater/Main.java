@@ -43,6 +43,7 @@ import java.util.prefs.Preferences;
 public class Main extends Application {
 
     private static final String VERSION = "0.1";
+    private static final String APP_NAME = "Public ID Converter";
 
     private static final int SOURCE_XML = 0;
     private static final int PORT_XML = 1;
@@ -123,7 +124,7 @@ public class Main extends Application {
             }
         }
 
-        stage.setTitle("Public ID Port");
+        stage.setTitle(APP_NAME);
         final BorderPane borderPane = new BorderPane();
         GridPane gridXML = new GridPane();
         setupGrid(gridXML);
@@ -164,13 +165,13 @@ public class Main extends Application {
         }
 
         String open = "Open..";
-        Button sourceButton = new Button(open);
-        Button portButton = new Button(open);
-        Button fileButton = new Button(open);
+        Button sourceXmlBtn = new Button(open);
+        Button portXmlBtn = new Button(open);
+        Button sourceSmaliBtn = new Button(open);
         Button convertButton = new Button("Convert");
         Button findButton = new Button("Find IDs");
 
-        sourceButton.setOnAction(
+        sourceXmlBtn.setOnAction(
                 new EventHandler<ActionEvent>() {
                     @Override
                     public void handle(final ActionEvent e) {
@@ -179,7 +180,7 @@ public class Main extends Application {
                 }
         );
 
-        portButton.setOnAction(
+        portXmlBtn.setOnAction(
                 new EventHandler<ActionEvent>() {
                     @Override
                     public void handle(final ActionEvent e) {
@@ -203,7 +204,7 @@ public class Main extends Application {
         });
 
 
-        fileButton.setOnAction(new EventHandler<ActionEvent>() {
+        sourceSmaliBtn.setOnAction(new EventHandler<ActionEvent>() {
             @Override
             public void handle(ActionEvent actionEvent) {
                 openFile(sourceFileLabel, stage, fileTextField, smaliExtension, SOURCE_SMALI);
@@ -212,11 +213,11 @@ public class Main extends Application {
 
         gridXML.add(sourceLabel, 0, 0);
         gridXML.add(sourceTextField, 1, 0);
-        gridXML.add(sourceButton, 2, 0);
+        gridXML.add(sourceXmlBtn, 2, 0);
 
         gridXML.add(fileLabel, 0, 1);
         gridXML.add(fileTextField, 1, 1);
-        gridXML.add(fileButton, 2, 1);
+        gridXML.add(sourceSmaliBtn, 2, 1);
 
         HBox findBtn = new HBox(10);
         findBtn.setAlignment(Pos.CENTER);
@@ -228,7 +229,7 @@ public class Main extends Application {
 
         gridXML.add(portLabel, 0, 4);
         gridXML.add(portTextField, 1, 4);
-        gridXML.add(portButton, 2, 4);
+        gridXML.add(portXmlBtn, 2, 4);
 
         HBox convertBtn = new HBox(10);
         convertBtn.setAlignment(Pos.CENTER);
